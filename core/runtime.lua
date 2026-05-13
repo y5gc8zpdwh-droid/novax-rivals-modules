@@ -4174,6 +4174,7 @@ function nxWarn(...)
   end
 end
 local cleanup
+local setupESP
 local cleanAllESP = function() end
 local clearAimTargetHighlight = function() end
 local restoreDeviceSpoof = function() end
@@ -9079,7 +9080,7 @@ function updateESPBoxOnly(p, cameraPos, maxDist, boxWidthFactor, showEnemy, show
   meta.boxVisible = setBox(esp, x1, y1, x2, y2, enemy and ESP_ENEMY_COLOR or ESP_TEAM_COLOR) == true
 end
 
-function setupESP()
+setupESP = function()
   local last=0
   local wasEnabled=false
   local cursor=1
@@ -9769,6 +9770,8 @@ local function loadNovaUI()
 end
 
 local GUI_BOOT_ERROR = nil
+local Rayfield = nil
+local Win = nil
 local function NX_BootGUI()
   local uiLoadError, _winError
   Rayfield, uiLoadError = loadNovaUI()
