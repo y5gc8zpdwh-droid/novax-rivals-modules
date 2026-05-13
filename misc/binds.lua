@@ -1,5 +1,1 @@
-return {
-  Name = "misc.binds",
-  Kind = "feature",
-  Status = "prepared",
-}
+return {Name = "misc.binds", Kind = "feature", Status = "ui-managed"}

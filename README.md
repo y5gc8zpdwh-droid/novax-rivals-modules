@@ -2,11 +2,12 @@
 
 This repository is structured for RawGitHub loading.
 
-Current safe mode:
+Current module mode:
 
-- `manifest.lua` points to `bootstrap/novax_xeno_optimized.lua`.
-- The bootstrap file keeps the current full working script intact so no functions are lost.
-- Feature files are prepared as independent module targets for gradual extraction.
+- `manifest.lua` points to `init.lua`.
+- `init.lua` loads `core/runtime.lua` first, then starts each feature module from the manifest.
+- Feature modules keep their own `Start(ctx)` entry and use separate runtime loops where the feature needs a loop.
+- `bootstrap/novax_xeno_optimized.lua` stays available as a fallback copy of the full working script.
 
 Raw base:
 
