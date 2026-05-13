@@ -6717,15 +6717,8 @@ function aimLockMouseStep(targetPos)
     return false
   end
 
-  if aimCameraAt(targetPos, 1) then
-    aimLockMouseState = Vector2.new(0, 0)
-    aimLockMouseRemainder = Vector2.new(0, 0)
-    if aimLockDirectionProbe then
-      aimLockDirectionProbe.error = nil
-      aimLockDirectionProbe.at = 0
-      aimLockDirectionProbe.bad = 0
-    end
-    return true
+  if not hasMouseAssistBackend() then
+    return aimCameraAt(targetPos, 1)
   end
   
   local sp, onScreen = worldToScreen(targetPos)
@@ -6745,14 +6738,14 @@ function aimLockMouseStep(targetPos)
     return true
   end
   
-  local maxStep = math.clamp(delta.Magnitude, 1, 62)
+  local maxStep = math.clamp(delta.Magnitude, 1, 86)
   local desired = delta
   if desired.Magnitude > maxStep then
     desired = desired.Unit * maxStep
   end
   
   local prev = aimLockMouseState or Vector2.new(0, 0)
-  local filtered = prev:Lerp(desired, 0.74)
+  local filtered = prev:Lerp(desired, 0.88)
   if filtered.Magnitude > 0 and filtered:Dot(delta) < 0 then
     filtered = desired
   end
@@ -6803,6 +6796,57 @@ function getManualMouseDelta()
     return Vector2.new(0, 0)
   end
   return raw
+end
+
+function mouseAssistBrakeMagnetStep(targetPos)
+  if not Camera or not targetPos or not hasMouseAssistBackend() then
+    return false
+  end
+  local sp, onScreen = worldToScreen(targetPos)
+  if not onScreen then
+    return false
+  end
+
+  local center = getAimScreenCenter(false)
+  local delta = sp - center
+  local distance = delta.Magnitude
+  local manual = getManualMouseDelta()
+  local strength = math.clamp(safeNum(STATE.AimMouseAssistStrength) / 100, 0.05, 1)
+  local magnetRadius = math.clamp(28 + (strength * 18), 28, 46)
+  local brakeRadius = math.clamp(4 + (strength * 3), 4, 7)
+
+  if distance > magnetRadius then
+    mouseStepState.assist = (mouseStepState.assist or Vector2.new(0, 0)):Lerp(Vector2.new(0, 0), 0.6)
+    return false
+  end
+
+  local desired = Vector2.new(0, 0)
+  if distance <= brakeRadius then
+    if manual.Magnitude > 0.15 then
+      desired = manual * -(0.18 + strength * 0.22)
+    end
+  else
+    local zone = 1 - math.clamp((distance - brakeRadius) / math.max(1, magnetRadius - brakeRadius), 0, 1)
+    local magnet = delta * (0.012 + strength * 0.028) * zone
+    if manual.Magnitude > 0.35 and manual:Dot(delta) < 0 then
+      magnet = magnet * 0.28
+    end
+    desired = magnet
+  end
+
+  local maxStep = math.clamp(0.8 + strength * 1.8, 0.8, 2.6)
+  if desired.Magnitude > maxStep then
+    desired = desired.Unit * maxStep
+  end
+  local prev = mouseStepState.assist or Vector2.new(0, 0)
+  local filtered = prev:Lerp(desired, 0.22)
+  if filtered.Magnitude < 0.08 then
+    mouseStepState.assist = Vector2.new(0, 0)
+    return true
+  end
+  mouseStepState.assist = filtered
+  local ok = sendMouseDeltaForMode(filtered.X, filtered.Y, "assist")
+  return ok == true
 end
 
 function getAutoAimPartFromTarget(t, noSwitch, deltaTime)
@@ -7873,13 +7917,7 @@ function setupMouseAimAssistLoop()
       mouseAssistSmoothedPos = mouseAssistSmoothedPos:Lerp(targetPos, alpha)
     end
 
-    local strength = math.clamp(safeNum(STATE.AimMouseAssistStrength) / 100, 0.05, 1)
-    local smooth = math.clamp(13 - (strength * 6.5), 5.5, 13)
-    if hasMouseAssistBackend() then
-      mouseAimStep(mouseAssistSmoothedPos, smooth, "assist", 1)
-    else
-      aimCameraAt(mouseAssistSmoothedPos, math.clamp(0.035 + (strength * 0.055), 0.035, 0.09))
-    end
+    mouseAssistBrakeMagnetStep(mouseAssistSmoothedPos)
   end))
 end
 
@@ -10177,6 +10215,23 @@ function restoreBackstabOrigin(originCF, originCameraCF)
     end)
   end
 end
+
+function getRandomizedReturnCFrame(originCF, lookAtPos, radius)
+  if not originCF then
+    return nil
+  end
+  local basePos = originCF.Position
+  local r = math.max(2, tonumber(radius) or 6)
+  local theta = math.rad(math.random(0, 359))
+  local dist = math.random(math.floor(r * 55), math.floor(r * 100)) / 100
+  local offset = Vector3.new(math.cos(theta) * dist, 0, math.sin(theta) * dist)
+  local pos = basePos + offset
+  if lookAtPos then
+    return CFrame.new(pos, lookAtPos)
+  end
+  return CFrame.new(pos) * (originCF - originCF.Position)
+end
+
 function doBackstab(targetPlayer)
   local targetRoot = getPlayerRoot(targetPlayer)
   local myRoot = getRoot()
@@ -10192,9 +10247,11 @@ function doBackstab(targetPlayer)
     ok = aimAtTargetBack(targetRoot)
   end)
   if ok then
-    task.wait(0.025)
+    task.wait(0.012)
     rightClick()
-    local deadline = tick() + 1.15
+    task.wait(0.018)
+    click(0.035)
+    local deadline = tick() + 0.42
     while RUNNING and targetRoot.Parent and tick() < deadline do
       aimAtTargetBack(targetRoot)
       hum = getPlayerHumanoid(targetPlayer)
@@ -10208,7 +10265,7 @@ function doBackstab(targetPlayer)
         hit = true
         break
       end
-      task.wait(0.03)
+      task.wait(0.018)
     end
   end
   restoreBackstabOrigin(originCF, originCameraCF)
@@ -10231,6 +10288,7 @@ function doNamesOrbitShot(targetPlayer)
   local originCF = myRoot.CFrame
   local originCameraCF = Camera and Camera.CFrame or nil
   local ok = false
+  local returnCF = getRandomizedReturnCFrame(originCF, head.Position, 7)
 
   pcall(function()
     local face = targetRoot.CFrame.LookVector
@@ -10240,12 +10298,12 @@ function doNamesOrbitShot(targetPlayer)
       Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, head.Position)
     end
     rightClick()
-    task.wait(0.018)
+    task.wait(0.024)
     ok = click(0.04) == true
-    task.wait(0.035)
+    task.wait(ok and 0.085 or 0.04)
   end)
 
-  restoreBackstabOrigin(originCF, originCameraCF)
+  restoreBackstabOrigin(returnCF or originCF, originCameraCF)
   return ok, ok and "shot" or "no_click"
 end
 
