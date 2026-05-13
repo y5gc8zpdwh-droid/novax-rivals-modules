@@ -2583,6 +2583,321 @@ function UI:CreateWindow(opts)
       return reg(ctrl)
     end
 
+    function tab:CreatePlayerSearch(cfg)
+      cfg = cfg or {}
+      local opts = cfg.Options or {"None"}
+      local current = cfg.CurrentOption
+      if type(current) == "table" then current = current[1] end
+      current = tostring(current or opts[1] or "None")
+      local placeholder = tostring(cfg.PlaceholderText or "Search player...")
+      local maxListHeight = math.clamp(tonumber(cfg.ListHeight) or 198, 120, 280)
+
+      local holder = make("Frame", {
+        Name = "NovaPlayerSearchHolder",
+        Size = UDim2.new(1, 0, 0, 42),
+        BackgroundTransparency = 1,
+        ClipsDescendants = false,
+        ZIndex = 60,
+        Parent = p,
+      })
+
+      local row, glow = makeControlBase(p, theme, 42)
+      row.Name = "NovaPlayerSearchRow"
+      row.Parent = holder
+      row.ZIndex = 61
+
+      local btn = make("TextButton", {
+        Size = UDim2.new(1, -14, 1, 0),
+        Position = UDim2.new(0, 7, 0, 0),
+        BackgroundTransparency = 1,
+        AutoButtonColor = false,
+        Text = "",
+        ZIndex = 62,
+        Parent = row,
+      })
+
+      local lbl = make("TextLabel", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -72, 1, 0),
+        Position = UDim2.new(0, 2, 0, 0),
+        Font = theme.Font,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        TextColor3 = theme.Colors.Text,
+        ZIndex = 63,
+        Parent = btn,
+      })
+
+      local searchPill = make("TextLabel", {
+        BackgroundColor3 = theme.Colors.Input,
+        BackgroundTransparency = 0.08,
+        BorderSizePixel = 0,
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -24, 0.5, 0),
+        Size = UDim2.new(0, 44, 0, 20),
+        Font = theme.Font,
+        TextSize = 10,
+        TextColor3 = theme.Colors.TextDim,
+        Text = "Find",
+        ZIndex = 63,
+        Parent = btn,
+      })
+      corner(searchPill, math.max(6, theme.Radius - 6))
+      stroke(searchPill, theme.Colors.StrokeSoft or theme.Colors.Stroke, 1, 0.55)
+
+      local arrow = make("TextLabel", {
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, 0, 0.5, 0),
+        Size = UDim2.new(0, 18, 0, 18),
+        Font = theme.Font,
+        TextSize = 14,
+        TextColor3 = theme.Colors.TextDim,
+        Text = ">",
+        ZIndex = 63,
+        Parent = btn,
+      })
+
+      local panel = make("Frame", {
+        Name = "NovaPlayerSearchPanel",
+        Size = UDim2.new(1, -8, 0, 0),
+        Position = UDim2.new(0, 4, 0, 48),
+        BackgroundColor3 = theme.Colors.Input,
+        BackgroundTransparency = 0,
+        BorderSizePixel = 0,
+        ClipsDescendants = true,
+        Visible = false,
+        ZIndex = 88,
+        Parent = holder,
+      })
+      corner(panel, theme.Radius - 2)
+      stroke(panel, theme.Colors.Stroke, 1, 0.45)
+
+      local searchBox = make("TextBox", {
+        Name = "NovaPlayerSearchBox",
+        Size = UDim2.new(1, -12, 0, 30),
+        Position = UDim2.new(0, 6, 0, 6),
+        BackgroundColor3 = theme.Colors.Surface,
+        BackgroundTransparency = 0.02,
+        BorderSizePixel = 0,
+        ClearTextOnFocus = false,
+        Font = theme.Font,
+        TextSize = 12,
+        TextColor3 = theme.Colors.Text,
+        PlaceholderText = placeholder,
+        PlaceholderColor3 = theme.Colors.TextMuted,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Text = "",
+        ZIndex = 90,
+        Parent = panel,
+      })
+      corner(searchBox, theme.Radius - 4)
+      stroke(searchBox, theme.Colors.StrokeSoft or theme.Colors.Stroke, 1, 0.5)
+      make("UIPadding", {
+        PaddingLeft = UDim.new(0, 9),
+        PaddingRight = UDim.new(0, 9),
+        Parent = searchBox,
+      })
+
+      local listFrame = make("ScrollingFrame", {
+        Name = "NovaPlayerSearchList",
+        Size = UDim2.new(1, -12, 1, -44),
+        Position = UDim2.new(0, 6, 0, 40),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Active = true,
+        ClipsDescendants = true,
+        ScrollBarThickness = 3,
+        ScrollBarImageColor3 = theme.Colors.Accent2 or theme.Colors.Accent,
+        ScrollBarImageTransparency = 0.45,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        CanvasPosition = Vector2.new(0, 0),
+        ZIndex = 89,
+        Parent = panel,
+      })
+      pcall(function()
+        listFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+      end)
+      local listLayout = make("UIListLayout", {Padding = UDim.new(0, 4), Parent = listFrame})
+      attachSmoothScroll(listFrame, theme, bindConnection)
+
+      local opened = false
+      local itemButtons = {}
+      local filtered = {}
+
+      local function normalizeOptions(newOpts)
+        local out = {}
+        if type(newOpts) == "table" then
+          for _, opt in ipairs(newOpts) do
+            out[#out + 1] = tostring(opt)
+          end
+        end
+        if #out == 0 then
+          out[1] = "None"
+        end
+        return out
+      end
+
+      local function updateLabel()
+        lbl.Text = string.format("%s: %s", tostring(cfg.Name or "Player"), tostring(current or "None"))
+      end
+
+      local function clearItems()
+        for _, item in ipairs(itemButtons) do
+          if item and item.Parent then
+            item:Destroy()
+          end
+        end
+        itemButtons = {}
+      end
+
+      local function setValue(v, fireCallback)
+        if type(v) == "table" then
+          v = v[1]
+        end
+        current = tostring(v or "None")
+        updateLabel()
+        if fireCallback then
+          safeCallback(cfg.Callback, current)
+        end
+      end
+
+      local function rebuildFiltered()
+        clearItems()
+        filtered = {}
+        local q = string.lower(tostring(searchBox.Text or ""))
+        for _, opt in ipairs(opts) do
+          local label = tostring(opt)
+          if q == "" or string.find(string.lower(label), q, 1, true) then
+            filtered[#filtered + 1] = label
+          end
+        end
+        if #filtered == 0 then
+          filtered[1] = "None"
+        end
+
+        for _, val in ipairs(filtered) do
+          local active = tostring(val) == tostring(current)
+          local item = make("TextButton", {
+            Size = UDim2.new(1, 0, 0, 30),
+            BackgroundColor3 = active and (theme.Colors.Active or theme.Colors.Surface3) or theme.Colors.Surface,
+            BorderSizePixel = 0,
+            ClipsDescendants = true,
+            AutoButtonColor = false,
+            Font = theme.Font,
+            TextSize = 12,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextColor3 = active and theme.Colors.Text or theme.Colors.TextDim,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            Text = "  " .. val,
+            ZIndex = 91,
+            Parent = listFrame,
+          })
+          corner(item, theme.Radius - 4)
+          item.MouseEnter:Connect(function()
+            tween(item, theme.Anim.Fast, {BackgroundColor3 = theme.Colors.Hover or theme.Colors.Surface2, TextColor3 = theme.Colors.Text})
+          end)
+          item.MouseLeave:Connect(function()
+            local isActive = tostring(val) == tostring(current)
+            tween(item, theme.Anim.Fast, {
+              BackgroundColor3 = isActive and (theme.Colors.Active or theme.Colors.Surface3) or theme.Colors.Surface,
+              TextColor3 = isActive and theme.Colors.Text or theme.Colors.TextDim,
+            })
+          end)
+          item.MouseButton1Down:Connect(function()
+            setValue(val, true)
+            opened = false
+            tween(panel, theme.Anim.Normal, {Size = UDim2.new(1, -8, 0, 0)})
+            tween(arrow, theme.Anim.Fast, {Rotation = 0})
+            tween(glow, theme.Anim.Fast, {BackgroundTransparency = 0.93})
+            holder.Size = UDim2.new(1, 0, 0, 42)
+            task.delay(theme.Anim.Normal + 0.03, function()
+              if not opened and panel and panel.Parent then
+                panel.Visible = false
+              end
+            end)
+          end)
+          itemButtons[#itemButtons + 1] = item
+        end
+        listFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(listLayout.AbsoluteContentSize.Y + 6, (#filtered * 34) + 6))
+      end
+
+      local function setOpened(v)
+        opened = v == true
+        panel.Visible = true
+        if opened then
+          searchBox.Text = ""
+          listFrame.CanvasPosition = Vector2.new(0, 0)
+          rebuildFiltered()
+          task.defer(function()
+            pcall(function() searchBox:CaptureFocus() end)
+          end)
+        end
+        local contentHeight = math.max(78, math.min(maxListHeight, 46 + (#filtered * 34)))
+        local h = opened and contentHeight or 0
+        holder.Size = UDim2.new(1, 0, 0, 42 + (opened and h + 6 or 0))
+        tween(panel, theme.Anim.Normal, {Size = UDim2.new(1, -8, 0, h)})
+        tween(arrow, theme.Anim.Fast, {Rotation = opened and 90 or 0})
+        tween(glow, theme.Anim.Fast, {BackgroundTransparency = opened and 0.84 or 0.93})
+        tween(searchPill, theme.Anim.Fast, {BackgroundTransparency = opened and 0.02 or 0.08})
+        if not opened then
+          pcall(function() searchBox:ReleaseFocus() end)
+          task.delay(theme.Anim.Normal + 0.03, function()
+            if not opened and panel and panel.Parent then
+              panel.Visible = false
+            end
+          end)
+        end
+      end
+
+      bindConnection(searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        if opened then
+          rebuildFiltered()
+        end
+      end))
+      bindConnection(listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        listFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 6)
+      end))
+      btn.MouseButton1Down:Connect(function()
+        addRipple(btn, theme)
+        setOpened(not opened)
+      end)
+
+      opts = normalizeOptions(opts)
+      updateLabel()
+      rebuildFiltered()
+      setOpened(false)
+
+      local ctrl = {
+        Frame = holder,
+        _token = string.lower(string.format("%s %s", tostring(cfg.Name or ""), tostring(current))),
+        SetVisible = function(_, v) holder.Visible = v end,
+        Set = function(self, v)
+          setValue(v, false)
+          rebuildFiltered()
+          self._token = string.lower(string.format("%s %s", tostring(cfg.Name or ""), tostring(current)))
+        end,
+        SetValue = function(self, v)
+          setValue(v, false)
+          rebuildFiltered()
+          self._token = string.lower(string.format("%s %s", tostring(cfg.Name or ""), tostring(current)))
+        end,
+        Refresh = function(self, newOpts)
+          opts = normalizeOptions(newOpts)
+          rebuildFiltered()
+          self._token = string.lower(string.format("%s %s", tostring(cfg.Name or ""), tostring(current)))
+        end,
+        SetOptions = function(self, newOpts)
+          opts = normalizeOptions(newOpts)
+          rebuildFiltered()
+          self._token = string.lower(string.format("%s %s", tostring(cfg.Name or ""), tostring(current)))
+        end,
+        Get = function() return current end,
+      }
+      return reg(ctrl)
+    end
+
     function tab:CreateOptionPicker(cfg)
       cfg = cfg or {}
       local function normalizeOptions(newOpts)

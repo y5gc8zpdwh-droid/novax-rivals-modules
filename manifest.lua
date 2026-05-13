@@ -30,6 +30,7 @@ return {
     "misc/binds.lua",
     "misc/beggerfarm.lua",
     "misc/backstab.lua",
+    "misc/names_orbit.lua",
     "misc/antihit.lua",
     "misc/control_spoof.lua",
   },
