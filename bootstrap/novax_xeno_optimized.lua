@@ -9594,6 +9594,325 @@ setupESP = function()
     end
   end))
 end
+
+local function hideAllESPRework()
+  for p, esp in pairs(espObjs) do
+    hideESP(esp, p)
+  end
+  for p in pairs(espHighlights) do
+    setHighlightEnabled(p, false)
+  end
+end
+
+local function updateESPPlayerRework(p, snapshot)
+  if not p or p == LocalPlayer then
+    return
+  end
+
+  local char, root, hum, head, meta = getESPCharacterData(p)
+  if not char or not root or not hum or hum.Health <= 0 then
+    hideESP(espObjs[p], p)
+    setHighlightEnabled(p, false)
+    return
+  end
+
+  local enemy = isEnemy(p, true)
+  if not ((enemy and snapshot.showEnemy) or ((not enemy) and snapshot.showTeam)) then
+    hideESP(espObjs[p], p)
+    setHighlightEnabled(p, false)
+    return
+  end
+
+  local delta = snapshot.cameraPos - root.Position
+  local distSq = delta:Dot(delta)
+  if snapshot.maxDist > 0 and distSq > snapshot.maxDistSq then
+    hideESP(espObjs[p], p)
+    setHighlightEnabled(p, false)
+    return
+  end
+
+  ensureHL(p, char, enemy, snapshot.showHighlight == true)
+
+  if not drawingReady or not snapshot.wantsDrawing then
+    hideESP(espObjs[p], p)
+    return
+  end
+
+  local x1, y1, x2, y2 = screenBounds(char, root, snapshot.boxWidthFactor, head)
+  if not x1 then
+    hideESP(espObjs[p], p)
+    return
+  end
+
+  local esp = createESP(p)
+  if not esp then
+    return
+  end
+
+  meta.hidden = false
+  local color = enemy and ESP_ENEMY_COLOR or ESP_TEAM_COLOR
+  local centerX = (x1 + x2) * 0.5
+
+  if snapshot.showBox then
+    meta.boxVisible = setBox(esp, x1, y1, x2, y2, color) == true
+  elseif meta.boxVisible ~= false then
+    hideBox(esp)
+    meta.boxVisible = false
+  end
+
+  if snapshot.showSkeleton and snapshot.allowSkeleton then
+    if not meta.nextSkeletonAt or snapshot.now >= meta.nextSkeletonAt then
+      setSkeleton(esp, char, color, meta)
+      meta.nextSkeletonAt = snapshot.now + snapshot.skeletonInterval
+      meta.skeletonVisible = true
+    end
+  elseif meta.skeletonVisible ~= false then
+    hideSkeleton(esp)
+    meta.skeletonVisible = false
+  end
+
+  if snapshot.showName then
+    local nameObj = ensureESPDrawing(esp, "Name")
+    if nameObj then
+      local text = tostring(p.DisplayName or p.Name)
+      if meta.nameText ~= text then
+        nameObj.Text = text
+        meta.nameText = text
+      end
+      nameObj.Position = Vector2.new(centerX, y1 - 16)
+      if meta.nameColor ~= color then
+        nameObj.Color = color
+        meta.nameColor = color
+      end
+      if meta.nameVisible ~= true then
+        nameObj.Visible = true
+        meta.nameVisible = true
+      end
+    end
+  elseif meta.nameVisible ~= false and esp.Name then
+    esp.Name.Visible = false
+    meta.nameVisible = false
+  end
+
+  if snapshot.showHealth then
+    local healthObj = ensureESPDrawing(esp, "Health")
+    local hpBg = ensureESPDrawing(esp, "HPBG")
+    local hp = ensureESPDrawing(esp, "HP")
+    if healthObj and hpBg and hp then
+      local ratio = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
+      local hpColor = getHealthColor(ratio)
+      local healthText = tostring(math.clamp(math.floor((tonumber(hum.Health) or 0) + 0.5), 0, 150))
+      if meta.healthText ~= healthText then
+        healthObj.Text = healthText
+        meta.healthText = healthText
+      end
+      healthObj.Position = Vector2.new(centerX, y1 - 4)
+      if meta.healthColor ~= hpColor then
+        healthObj.Color = hpColor
+        hp.Color = hpColor
+        meta.healthColor = hpColor
+      end
+      hpBg.From = Vector2.new(x1 - 6, y1)
+      hpBg.To = Vector2.new(x1 - 6, y2)
+      hp.From = Vector2.new(x1 - 6, y2)
+      hp.To = Vector2.new(x1 - 6, y2 - ((y2 - y1) * ratio))
+      if meta.healthVisible ~= true then
+        healthObj.Visible = true
+        meta.healthVisible = true
+      end
+      if meta.healthBarVisible ~= true then
+        hpBg.Visible = true
+        hp.Visible = true
+        meta.healthBarVisible = true
+      end
+    end
+  else
+    if meta.healthVisible ~= false and esp.Health then
+      esp.Health.Visible = false
+      meta.healthVisible = false
+    end
+    if meta.healthBarVisible ~= false and (esp.HPBG or esp.HP) then
+      if esp.HPBG then esp.HPBG.Visible = false end
+      if esp.HP then esp.HP.Visible = false end
+      meta.healthBarVisible = false
+    end
+  end
+
+  if snapshot.showDistance then
+    local distanceObj = ensureESPDrawing(esp, "Distance")
+    if distanceObj then
+      local distanceText = tostring(math.floor(math.sqrt(distSq) + 0.5)) .. "m"
+      if meta.distanceText ~= distanceText then
+        distanceObj.Text = distanceText
+        meta.distanceText = distanceText
+      end
+      distanceObj.Position = Vector2.new(centerX, y2 + 3)
+      if meta.distanceColor ~= ESP_TEXT_COLOR then
+        distanceObj.Color = ESP_TEXT_COLOR
+        meta.distanceColor = ESP_TEXT_COLOR
+      end
+      if meta.distanceVisible ~= true then
+        distanceObj.Visible = true
+        meta.distanceVisible = true
+      end
+    end
+  elseif meta.distanceVisible ~= false and esp.Distance then
+    esp.Distance.Visible = false
+    meta.distanceVisible = false
+  end
+end
+
+setupESP = function()
+  task.spawn(function()
+    local wasEnabled = false
+    local cursor = 1
+    local lastScan = 0
+    local activePlayers = {}
+    local activeSet = {}
+    local function clearTable(tbl)
+      if table.clear then
+        table.clear(tbl)
+      else
+        for k in pairs(tbl) do
+          tbl[k] = nil
+        end
+      end
+    end
+
+    while RUNNING do
+      if not Camera then
+        task.wait(0.2)
+      elseif STATE.ESPEnabled ~= true then
+        if wasEnabled then
+          hideAllESPRework()
+          clearESPHighlights()
+          clearTable(activePlayers)
+          clearTable(activeSet)
+          wasEnabled = false
+          cursor = 1
+        end
+        task.wait(0.16)
+      else
+        local now = tick()
+        local showEnemy = STATE.ESPEnemy == true
+        local showTeam = STATE.ESPTeam == true
+        local showHighlight = STATE.ESPHighlight == true
+        local showName = STATE.ESPName == true
+        local showHealth = STATE.ESPHealth == true
+        local showDistance = STATE.ESPDistance == true
+        local showBox = STATE.ESPBox == true
+        local showSkeleton = STATE.ESPSkeleton == true and isRoundStarted()
+        local wantsDrawing = showName or showHealth or showDistance or showBox or showSkeleton
+        local maxDist = math.max(0, safeNum(STATE.ESPMaxDistance))
+        local maxDistSq = maxDist * maxDist
+        local cameraPos = Camera.CFrame.Position
+        wasEnabled = true
+
+        if not showEnemy and not showTeam then
+          hideAllESPRework()
+          task.wait(0.2)
+          continue
+        end
+
+        if now - lastScan >= 0.42 then
+          lastScan = now
+          updateCache()
+          clearTable(activePlayers)
+          clearTable(activeSet)
+          for _, p in ipairs(cachedPlayers) do
+            if p and p ~= LocalPlayer then
+              local char, root, hum = getESPCharacterData(p)
+              if char and root and hum and hum.Health > 0 then
+                local enemy = isEnemy(p, true)
+                if (enemy and showEnemy) or ((not enemy) and showTeam) then
+                  local delta = cameraPos - root.Position
+                  local distSq = delta:Dot(delta)
+                  if maxDist <= 0 or distSq <= maxDistSq then
+                    activePlayers[#activePlayers + 1] = {Player = p, DistSq = distSq}
+                    activeSet[p] = true
+                  end
+                end
+              end
+            end
+          end
+          table.sort(activePlayers, function(a, b)
+            return (a.DistSq or huge) < (b.DistSq or huge)
+          end)
+          local maxActive = showSkeleton and 14 or 24
+          for index = #activePlayers, maxActive + 1, -1 do
+            local item = activePlayers[index]
+            if item then
+              activeSet[item.Player] = nil
+            end
+            activePlayers[index] = nil
+          end
+          for p, esp in pairs(espObjs) do
+            if not activeSet[p] then
+              hideESP(esp, p)
+              setHighlightEnabled(p, false)
+            end
+          end
+          for p in pairs(espHighlights) do
+            if not activeSet[p] then
+              setHighlightEnabled(p, false)
+            end
+          end
+          if cursor > #activePlayers then
+            cursor = 1
+          end
+        end
+
+        local total = #activePlayers
+        if total <= 0 then
+          task.wait(0.18)
+          continue
+        end
+
+        local updateFps = math.clamp(safeNum(STATE.ESPUpdateFPS), 5, 18)
+        local budget = showSkeleton and 1 or math.clamp(math.ceil(total / 5), 2, 5)
+        if total <= 6 and not showSkeleton then
+          budget = total
+        end
+
+        local snapshot = {
+          now = now,
+          cameraPos = cameraPos,
+          maxDist = maxDist,
+          maxDistSq = maxDistSq,
+          boxWidthFactor = math.clamp(safeNum(STATE.ESPBoxScale) / 100, 0.3, 0.7),
+          showEnemy = showEnemy,
+          showTeam = showTeam,
+          showHighlight = showHighlight,
+          showName = showName,
+          showHealth = showHealth,
+          showDistance = showDistance,
+          showBox = showBox,
+          showSkeleton = showSkeleton,
+          allowSkeleton = showSkeleton and total <= 14,
+          skeletonInterval = total > 8 and 0.42 or 0.3,
+          wantsDrawing = wantsDrawing,
+        }
+
+        for _ = 1, budget do
+          if cursor > total then
+            cursor = 1
+          end
+          local item = activePlayers[cursor]
+          cursor = cursor + 1
+          if item and item.Player then
+            local ok = pcall(updateESPPlayerRework, item.Player, snapshot)
+            if not ok then
+              hideESP(espObjs[item.Player], item.Player)
+              setHighlightEnabled(item.Player, false)
+            end
+          end
+        end
+
+        task.wait(math.max(1 / updateFps, showSkeleton and 0.09 or 0.045))
+      end
+    end
+  end)
+end
 end
 local speedBV, flyBV, flyBG, flyActive = nil,nil,nil,false
 local noClipOriginal = {}
@@ -10331,7 +10650,7 @@ end
     local c = createExpandableToggleControl(CT, {
         Name = "AimLock",
         CurrentValue = STATE.AimLock,
-        Expanded = true,
+        Expanded = false,
         Callback = function(v)
           applyExclusiveMode("AimLock", v)
         end,
@@ -10378,7 +10697,7 @@ end
     local c = createExpandableToggleControl(CT, {
         Name = "Auto Aim",
         CurrentValue = STATE.AutoAim,
-        Expanded = true,
+        Expanded = false,
         Callback = function(v)
           applyExclusiveMode("AutoAim", v)
         end,
@@ -10448,7 +10767,7 @@ end
     c = createExpandableToggleControl(CT, {
         Name = "Mouse Aim Assist",
         CurrentValue = STATE.AimMouseAssist,
-        Expanded = true,
+        Expanded = false,
         Callback = function(v)
           STATE.AimMouseAssist = v == true
           if not STATE.AimMouseAssist then
@@ -10493,7 +10812,7 @@ end
     local c = createExpandableToggleControl(CT, {
         Name = "Rage Bot",
         CurrentValue = STATE.RageBot,
-        Expanded = true,
+        Expanded = false,
         Callback = function(v)
           applyExclusiveMode("RageBot", v)
         end,
@@ -10743,11 +11062,11 @@ end
   }))
   bindStateControl("ESPUpdateFPS", ET:CreateSlider({
     Name = "Update FPS",
-    Range = {5, 24},
+    Range = {5, 18},
     Increment = 1,
     CurrentValue = STATE.ESPUpdateFPS,
     Callback = function(v)
-      STATE.ESPUpdateFPS = math.clamp(safeNum(v), 5, 24)
+      STATE.ESPUpdateFPS = math.clamp(safeNum(v), 5, 18)
     end,
   }))
   
