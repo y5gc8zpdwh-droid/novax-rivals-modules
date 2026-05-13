@@ -983,8 +983,8 @@ function UI:CreateWindow(opts)
     BackgroundTransparency = 0.12,
     BorderSizePixel = 0,
     Font = Enum.Font.GothamBold,
-    TextSize = 15,
-    Text = "⚙",
+    TextSize = 16,
+    Text = "...",
     TextColor3 = theme.Colors.Accent2 or theme.Colors.Text,
     AutoButtonColor = false,
     Parent = top,
@@ -1414,7 +1414,7 @@ function UI:CreateWindow(opts)
       BackgroundTransparency = settingsOpen and 0.06 or 1,
     }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     tween(settingsScale, theme.Anim.Normal, {Scale = settingsOpen and 1 or 0.97}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-    tween(settingsBtn, theme.Anim.Normal, {Rotation = settingsOpen and 90 or 0}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    tween(settingsBtn, theme.Anim.Normal, {BackgroundTransparency = settingsOpen and 0.02 or 0.12}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     task.delay(theme.Anim.Normal + 0.04, function()
       if not settingsOpen and settingsPanel then
         settingsPanel.Visible = false
