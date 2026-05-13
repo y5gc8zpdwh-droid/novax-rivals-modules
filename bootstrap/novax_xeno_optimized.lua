@@ -78,8 +78,8 @@ function UI.SetDebug(self, maybeVal)
 end
 
 UI.DefaultTheme = {
-  Font = Enum.Font.GothamMedium,
-  Radius = 16,
+  Font = Enum.Font.Gotham,
+  Radius = 10,
   WindowSize = Vector2.new(900, 590),
   LogoImage = {
     "novax_logo_transparent.png",
@@ -102,40 +102,40 @@ UI.DefaultTheme = {
     Size = 4,
   },
   Colors = {
-    BgA = Color3.fromRGB(3, 8, 18),
-    BgB = Color3.fromRGB(7, 17, 34),
-    Surface = Color3.fromRGB(10, 20, 36),
-    SurfaceGlass = Color3.fromRGB(12, 25, 44),
-    ExpandableSurface = Color3.fromRGB(16, 39, 72),
-    ExpandableSurfaceOpen = Color3.fromRGB(20, 61, 108),
-    ExpandableTitle = Color3.fromRGB(12, 31, 58),
-    ExpandableTitleOpen = Color3.fromRGB(28, 82, 145),
-    NestedSurface = Color3.fromRGB(5, 13, 27),
-    NestedSurface2 = Color3.fromRGB(10, 27, 51),
-    NestedStroke = Color3.fromRGB(18, 51, 91),
-    Surface2 = Color3.fromRGB(15, 31, 55),
-    Surface3 = Color3.fromRGB(20, 47, 82),
-    Sidebar = Color3.fromRGB(6, 14, 28),
-    Sidebar2 = Color3.fromRGB(10, 24, 45),
-    Stroke = Color3.fromRGB(40, 110, 190),
-    StrokeSoft = Color3.fromRGB(22, 52, 88),
-    Text = Color3.fromRGB(239, 247, 255),
-    TextDim = Color3.fromRGB(150, 177, 211),
-    TextMuted = Color3.fromRGB(91, 119, 154),
-    Accent = Color3.fromRGB(30, 144, 255),
-    Accent2 = Color3.fromRGB(40, 225, 255),
-    Accent3 = Color3.fromRGB(96, 165, 250),
-    AccentSoft = Color3.fromRGB(10, 76, 139),
-    Input = Color3.fromRGB(7, 17, 32),
-    Hover = Color3.fromRGB(18, 40, 70),
-    Active = Color3.fromRGB(21, 64, 116),
+    BgA = Color3.fromRGB(9, 10, 13),
+    BgB = Color3.fromRGB(14, 16, 21),
+    Surface = Color3.fromRGB(18, 21, 27),
+    SurfaceGlass = Color3.fromRGB(20, 24, 31),
+    ExpandableSurface = Color3.fromRGB(23, 28, 36),
+    ExpandableSurfaceOpen = Color3.fromRGB(28, 36, 47),
+    ExpandableTitle = Color3.fromRGB(21, 25, 32),
+    ExpandableTitleOpen = Color3.fromRGB(31, 42, 55),
+    NestedSurface = Color3.fromRGB(13, 16, 21),
+    NestedSurface2 = Color3.fromRGB(20, 24, 31),
+    NestedStroke = Color3.fromRGB(43, 50, 62),
+    Surface2 = Color3.fromRGB(23, 28, 36),
+    Surface3 = Color3.fromRGB(30, 37, 48),
+    Sidebar = Color3.fromRGB(14, 17, 22),
+    Sidebar2 = Color3.fromRGB(18, 22, 29),
+    Stroke = Color3.fromRGB(63, 74, 90),
+    StrokeSoft = Color3.fromRGB(40, 48, 60),
+    Text = Color3.fromRGB(235, 238, 243),
+    TextDim = Color3.fromRGB(157, 166, 179),
+    TextMuted = Color3.fromRGB(101, 112, 128),
+    Accent = Color3.fromRGB(86, 132, 204),
+    Accent2 = Color3.fromRGB(105, 168, 148),
+    Accent3 = Color3.fromRGB(148, 160, 176),
+    AccentSoft = Color3.fromRGB(34, 52, 72),
+    Input = Color3.fromRGB(13, 16, 22),
+    Hover = Color3.fromRGB(28, 34, 44),
+    Active = Color3.fromRGB(36, 55, 78),
     Shadow = Color3.fromRGB(0, 0, 0),
   },
   Anim = {
     Fast = 0.12,
     Normal = 0.22,
     Slow = 0.42,
-    Splash = 3.6,
+    Splash = 2.4,
   },
   Spacing = {
     XS = 4,
@@ -1369,17 +1369,17 @@ function UI:CreateWindow(opts)
   end
   
   settingRow("accent", "Accent", {
-    {Label = "Moon", Colors = {Accent = Color3.fromRGB(30, 144, 255), Accent2 = Color3.fromRGB(40, 225, 255), Accent3 = Color3.fromRGB(96, 165, 250), AccentSoft = Color3.fromRGB(10, 76, 139), Stroke = Color3.fromRGB(40, 110, 190), Active = Color3.fromRGB(21, 64, 116), Hover = Color3.fromRGB(18, 40, 70)}},
-    {Label = "Cyan", Colors = {Accent = Color3.fromRGB(22, 190, 255), Accent2 = Color3.fromRGB(92, 245, 255), Accent3 = Color3.fromRGB(125, 211, 252), AccentSoft = Color3.fromRGB(9, 88, 124), Stroke = Color3.fromRGB(33, 144, 205), Active = Color3.fromRGB(18, 82, 112), Hover = Color3.fromRGB(17, 52, 74)}},
-    {Label = "Violet", Colors = {Accent = Color3.fromRGB(125, 116, 255), Accent2 = Color3.fromRGB(80, 218, 255), Accent3 = Color3.fromRGB(167, 139, 250), AccentSoft = Color3.fromRGB(48, 41, 111), Stroke = Color3.fromRGB(93, 91, 190), Active = Color3.fromRGB(48, 46, 122), Hover = Color3.fromRGB(33, 36, 80)}},
+    {Label = "Steel", Colors = {Accent = Color3.fromRGB(86, 132, 204), Accent2 = Color3.fromRGB(105, 168, 148), Accent3 = Color3.fromRGB(148, 160, 176), AccentSoft = Color3.fromRGB(34, 52, 72), Stroke = Color3.fromRGB(63, 74, 90), Active = Color3.fromRGB(36, 55, 78), Hover = Color3.fromRGB(28, 34, 44)}},
+    {Label = "Sage", Colors = {Accent = Color3.fromRGB(105, 168, 148), Accent2 = Color3.fromRGB(137, 190, 170), Accent3 = Color3.fromRGB(154, 168, 160), AccentSoft = Color3.fromRGB(34, 60, 52), Stroke = Color3.fromRGB(55, 80, 70), Active = Color3.fromRGB(38, 68, 57), Hover = Color3.fromRGB(29, 42, 37)}},
+    {Label = "Amber", Colors = {Accent = Color3.fromRGB(205, 154, 91), Accent2 = Color3.fromRGB(183, 135, 86), Accent3 = Color3.fromRGB(176, 160, 148), AccentSoft = Color3.fromRGB(70, 52, 34), Stroke = Color3.fromRGB(86, 72, 56), Active = Color3.fromRGB(78, 58, 36), Hover = Color3.fromRGB(45, 37, 29)}},
   }, function(option)
     window:ApplyThemePatch({Colors = option.Colors})
   end, 10)
   
   settingRow("background", "Background", {
-    {Label = "Navy", Colors = {BgA = Color3.fromRGB(3, 8, 18), BgB = Color3.fromRGB(7, 17, 34), Surface = Color3.fromRGB(10, 20, 36), SurfaceGlass = Color3.fromRGB(12, 25, 44), Surface2 = Color3.fromRGB(15, 31, 55), Surface3 = Color3.fromRGB(20, 47, 82), Sidebar = Color3.fromRGB(6, 14, 28), Sidebar2 = Color3.fromRGB(10, 24, 45), Input = Color3.fromRGB(7, 17, 32), ExpandableSurface = Color3.fromRGB(16, 39, 72), ExpandableSurfaceOpen = Color3.fromRGB(20, 61, 108), ExpandableTitle = Color3.fromRGB(12, 31, 58), ExpandableTitleOpen = Color3.fromRGB(28, 82, 145), NestedSurface = Color3.fromRGB(5, 13, 27), NestedSurface2 = Color3.fromRGB(10, 27, 51), StrokeSoft = Color3.fromRGB(22, 52, 88), NestedStroke = Color3.fromRGB(18, 51, 91)}},
-    {Label = "Deep", Colors = {BgA = Color3.fromRGB(2, 5, 12), BgB = Color3.fromRGB(5, 13, 28), Surface = Color3.fromRGB(8, 17, 31), SurfaceGlass = Color3.fromRGB(10, 23, 40), Surface2 = Color3.fromRGB(13, 28, 50), Surface3 = Color3.fromRGB(18, 42, 73), Sidebar = Color3.fromRGB(4, 11, 24), Sidebar2 = Color3.fromRGB(8, 20, 39), Input = Color3.fromRGB(5, 14, 28), ExpandableSurface = Color3.fromRGB(12, 32, 61), ExpandableSurfaceOpen = Color3.fromRGB(18, 52, 94), ExpandableTitle = Color3.fromRGB(9, 25, 48), ExpandableTitleOpen = Color3.fromRGB(22, 64, 114), NestedSurface = Color3.fromRGB(3, 10, 22), NestedSurface2 = Color3.fromRGB(8, 23, 44), StrokeSoft = Color3.fromRGB(18, 44, 78), NestedStroke = Color3.fromRGB(16, 45, 82)}},
-    {Label = "Dusk", Colors = {BgA = Color3.fromRGB(6, 7, 19), BgB = Color3.fromRGB(12, 17, 39), Surface = Color3.fromRGB(13, 20, 41), SurfaceGlass = Color3.fromRGB(17, 26, 52), Surface2 = Color3.fromRGB(22, 33, 63), Surface3 = Color3.fromRGB(32, 49, 88), Sidebar = Color3.fromRGB(9, 12, 29), Sidebar2 = Color3.fromRGB(16, 25, 50), Input = Color3.fromRGB(9, 15, 31), ExpandableSurface = Color3.fromRGB(22, 36, 72), ExpandableSurfaceOpen = Color3.fromRGB(33, 57, 110), ExpandableTitle = Color3.fromRGB(17, 30, 61), ExpandableTitleOpen = Color3.fromRGB(45, 67, 126), NestedSurface = Color3.fromRGB(7, 11, 26), NestedSurface2 = Color3.fromRGB(16, 27, 54), StrokeSoft = Color3.fromRGB(35, 48, 87), NestedStroke = Color3.fromRGB(48, 67, 120)}},
+    {Label = "Graphite", Colors = {BgA = Color3.fromRGB(9, 10, 13), BgB = Color3.fromRGB(14, 16, 21), Surface = Color3.fromRGB(18, 21, 27), SurfaceGlass = Color3.fromRGB(20, 24, 31), Surface2 = Color3.fromRGB(23, 28, 36), Surface3 = Color3.fromRGB(30, 37, 48), Sidebar = Color3.fromRGB(14, 17, 22), Sidebar2 = Color3.fromRGB(18, 22, 29), Input = Color3.fromRGB(13, 16, 22), ExpandableSurface = Color3.fromRGB(23, 28, 36), ExpandableSurfaceOpen = Color3.fromRGB(28, 36, 47), ExpandableTitle = Color3.fromRGB(21, 25, 32), ExpandableTitleOpen = Color3.fromRGB(31, 42, 55), NestedSurface = Color3.fromRGB(13, 16, 21), NestedSurface2 = Color3.fromRGB(20, 24, 31), StrokeSoft = Color3.fromRGB(40, 48, 60), NestedStroke = Color3.fromRGB(43, 50, 62)}},
+    {Label = "Carbon", Colors = {BgA = Color3.fromRGB(7, 8, 10), BgB = Color3.fromRGB(12, 13, 16), Surface = Color3.fromRGB(16, 18, 22), SurfaceGlass = Color3.fromRGB(18, 21, 26), Surface2 = Color3.fromRGB(20, 24, 30), Surface3 = Color3.fromRGB(27, 32, 40), Sidebar = Color3.fromRGB(12, 14, 18), Sidebar2 = Color3.fromRGB(16, 19, 24), Input = Color3.fromRGB(11, 13, 17), ExpandableSurface = Color3.fromRGB(21, 25, 32), ExpandableSurfaceOpen = Color3.fromRGB(26, 32, 41), ExpandableTitle = Color3.fromRGB(18, 22, 28), ExpandableTitleOpen = Color3.fromRGB(29, 37, 48), NestedSurface = Color3.fromRGB(10, 12, 16), NestedSurface2 = Color3.fromRGB(17, 20, 26), StrokeSoft = Color3.fromRGB(36, 42, 52), NestedStroke = Color3.fromRGB(39, 45, 55)}},
+    {Label = "Neutral", Colors = {BgA = Color3.fromRGB(12, 12, 13), BgB = Color3.fromRGB(17, 18, 20), Surface = Color3.fromRGB(22, 23, 26), SurfaceGlass = Color3.fromRGB(24, 26, 30), Surface2 = Color3.fromRGB(28, 30, 34), Surface3 = Color3.fromRGB(36, 39, 45), Sidebar = Color3.fromRGB(16, 17, 20), Sidebar2 = Color3.fromRGB(21, 23, 27), Input = Color3.fromRGB(16, 17, 20), ExpandableSurface = Color3.fromRGB(28, 31, 36), ExpandableSurfaceOpen = Color3.fromRGB(36, 41, 48), ExpandableTitle = Color3.fromRGB(24, 27, 32), ExpandableTitleOpen = Color3.fromRGB(39, 45, 53), NestedSurface = Color3.fromRGB(15, 16, 19), NestedSurface2 = Color3.fromRGB(24, 26, 30), StrokeSoft = Color3.fromRGB(45, 50, 58), NestedStroke = Color3.fromRGB(48, 54, 63)}},
   }, function(option)
     window:ApplyThemePatch({Colors = option.Colors})
   end, 20)
