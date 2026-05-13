@@ -11,6 +11,7 @@ return {
     "core/utils.lua",
     "core/scheduler.lua",
     "ui/NovaPremiumUI.lua",
+    "ui/config_manager.lua",
     "combat/aimlock.lua",
     "combat/autoaim.lua",
     "combat/mouse_aim_assist.lua",

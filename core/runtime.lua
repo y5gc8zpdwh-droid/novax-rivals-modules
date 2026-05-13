@@ -9912,6 +9912,8 @@ local function targetPartFromLabel(value, allowCenter)
   return selected
 end
 
+local NX_CONFIG_SYNC = nil
+
 local function NX_BuildGUI()
 if not GUI_READY then
   return
@@ -10720,7 +10722,7 @@ end
     makeBind(b[1], b[2])
   end
   
-  local function syncAfterConfigLoad()
+  NX_CONFIG_SYNC = function()
     enforceNoHookMode()
     enforceAlwaysOnChecks()
     STATE.AimLockPart = targetPartFromLabel(STATE.AimLockPart, true)
@@ -10736,15 +10738,6 @@ end
     applyDeviceSpoof()
     syncStateControlsFromState()
     refreshTPDropdown()
-  end
-  
-  if Rayfield.CreateConfigManager then
-    Rayfield:CreateConfigManager(Win, STATE, {
-      Folder = CONFIG_FOLDER,
-      DefaultName = "default",
-      TabName = "Configs",
-      Sync = syncAfterConfigLoad,
-    })
   end
   
   addConnection("input", UserInputService.InputBegan:Connect(function(i, gp)
@@ -11318,8 +11311,30 @@ function setupFOVLoop()
   end))
 end
 
+function setupConfigManager()
+  if not GUI_READY or not Rayfield or not Win then
+    return false
+  end
+  if type(Rayfield.CreateConfigManager) ~= "function" then
+    featureUnavailable("Configs", "Config-Manager-Modul wurde nicht geladen.")
+    return false
+  end
+  return Rayfield:CreateConfigManager(Win, STATE, {
+    Folder = CONFIG_FOLDER,
+    DefaultName = "default",
+    TabName = "Configs",
+    Sync = NX_CONFIG_SYNC,
+  })
+end
+
 local NXRuntime = {
   State = STATE,
+  GetUI = function()
+    return Rayfield
+  end,
+  GetWindow = function()
+    return Win
+  end,
   StartCoreDevice = function()
     return nxStartOnce("core.device", function()
       applyDeviceSpoof()
@@ -11358,6 +11373,7 @@ local NXRuntime = {
   StartBunnyHopLoop = function() return nxStartOnce("movement.bunnyhop", setupBunnyHopLoop) end,
   StartAntiHitLoop = function() return nxStartOnce("misc.antihit", setupAntiHitLoop) end,
   StartBeggerFarmLoop = function() return nxStartOnce("utility.begger", setupBeggerFarm) end,
+  StartConfigManager = function() return nxStartOnce("ui.configs", setupConfigManager) end,
   StartControlSpoofLoop = function() return nxStartOnce("utility.controlmode", setupControlModeSpoof) end,
   StartAutoBackstabLoop = function() return nxStartOnce("utility.backstab", setupAutoBackstab) end,
   NotifyLoaded = function()
