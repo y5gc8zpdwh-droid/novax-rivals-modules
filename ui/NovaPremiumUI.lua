@@ -35,6 +35,10 @@ UI.DefaultTheme = {
     "novax_logo_transparent.png",
     "C:/Users/User/OneDrive/Neuer Ordner 1/novax_logo_transparent.png",
     "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\novax_logo_transparent.png",
+    "_assets/novax_logo_transparent.png",
+    "C:/Users/User/OneDrive/Neuer Ordner 1/_assets/novax_logo_transparent.png",
+    "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\_assets\\novax_logo_transparent.png",
+    "https://raw.githubusercontent.com/y5gc8zpdwh-droid/novax-rivals-assets/main/novax_logo_transparent.png",
     "download.png",
     "NovaX_Logo.png",
     "C:/Users/User/OneDrive/Neuer Ordner 1/download.png",
@@ -44,9 +48,13 @@ UI.DefaultTheme = {
     "novax_logo_ring_transparent.png",
     "C:/Users/User/OneDrive/Neuer Ordner 1/novax_logo_ring_transparent.png",
     "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\novax_logo_ring_transparent.png",
+    "_assets/novax_logo_ring_transparent.png",
+    "C:/Users/User/OneDrive/Neuer Ordner 1/_assets/novax_logo_ring_transparent.png",
+    "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\_assets\\novax_logo_ring_transparent.png",
+    "https://raw.githubusercontent.com/y5gc8zpdwh-droid/novax-rivals-assets/main/novax_logo_ring_transparent.png",
   },
-  LogoRectOffset = nil,
-  LogoRectSize = nil,
+  LogoRectOffset = Vector2.new(285, 285),
+  LogoRectSize = Vector2.new(690, 690),
   Blur = {
     Enabled = true,
     Size = 4,
@@ -281,31 +289,83 @@ local function safeCallback(callback, ...)
   end
 end
 
+local function ensureAssetFolder(folder)
+  if typeof(makefolder) == "function" and typeof(isfolder) == "function" then
+    local okFolder, exists = pcall(isfolder, folder)
+    if okFolder and not exists then
+      pcall(makefolder, folder)
+    end
+  end
+end
+
+local function assetFromLocalFile(path)
+  if type(path) ~= "string" or path == "" then
+    return nil
+  end
+
+  if typeof(getcustomasset) == "function" then
+    local ok, asset = pcall(getcustomasset, path)
+    if ok and type(asset) == "string" and asset ~= "" then
+      return asset
+    end
+  end
+
+  if typeof(getsynasset) == "function" then
+    local ok, asset = pcall(getsynasset, path)
+    if ok and type(asset) == "string" and asset ~= "" then
+      return asset
+    end
+  end
+
+  return nil
+end
+
+local function resolveRemoteAsset(url)
+  if type(url) ~= "string" or url == "" then
+    return nil
+  end
+
+  local fileName = url:match("([^/%?]+%.[%w]+)") or "asset.png"
+  local cachePath = "NovaXAssets/" .. fileName
+  local cached = assetFromLocalFile(cachePath)
+  if cached then
+    return cached
+  end
+
+  if typeof(writefile) == "function" then
+    ensureAssetFolder("NovaXAssets")
+    local sep = string.find(url, "?", 1, true) and "&" or "?"
+    local okFetch, body = pcall(function()
+      return game:HttpGet(url .. sep .. "nx=" .. tostring(math.floor(os.clock() * 1000000)), true)
+    end)
+    if okFetch and type(body) == "string" and #body > 64 then
+      local okWrite = pcall(function()
+        writefile(cachePath, body)
+      end)
+      if okWrite then
+        return assetFromLocalFile(cachePath)
+      end
+    end
+  end
+
+  return url
+end
+
 local function resolveAssetSource(source)
   local function resolveOne(value)
     if type(value) ~= "string" or value == "" then
       return nil
     end
     
-    if value:match("^rbxasset") or value:match("^http") then
+    if value:match("^rbxasset") then
       return value
     end
-    
-    if typeof(getcustomasset) == "function" then
-      local ok, asset = pcall(getcustomasset, value)
-      if ok and type(asset) == "string" and asset ~= "" then
-        return asset
-      end
+
+    if value:match("^http") then
+      return resolveRemoteAsset(value)
     end
     
-    if typeof(getsynasset) == "function" then
-      local ok, asset = pcall(getsynasset, value)
-      if ok and type(asset) == "string" and asset ~= "" then
-        return asset
-      end
-    end
-    
-    return nil
+    return assetFromLocalFile(value)
   end
   
   if type(source) == "table" then
@@ -3784,7 +3844,7 @@ function UI:CreateWindow(opts)
     })
     local markScale = make("UIScale", {Scale = 0.88, Parent = mark})
     local splashRingLogo = nil
-    if logoRingSource then
+    if logoRingSource and not logoSource then
       splashRingLogo = make("ImageLabel", {
         BackgroundTransparency = 1,
         AnchorPoint = Vector2.new(0.5, 0.5),
@@ -3937,7 +3997,7 @@ function UI:CreateWindow(opts)
       corner(bar, 999)
       progressBars[i] = bar
     end
-    outerRing.Visible = splashRingLogo == nil
+    outerRing.Visible = splashLogo == nil and splashRingLogo == nil
     innerRing.Visible = splashLogo == nil and splashRingLogo == nil
     if splashLogo then
       codeLeft.Visible = false

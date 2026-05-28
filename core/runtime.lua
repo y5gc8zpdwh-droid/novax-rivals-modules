@@ -85,6 +85,10 @@ UI.DefaultTheme = {
     "novax_logo_transparent.png",
     "C:/Users/User/OneDrive/Neuer Ordner 1/novax_logo_transparent.png",
     "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\novax_logo_transparent.png",
+    "_assets/novax_logo_transparent.png",
+    "C:/Users/User/OneDrive/Neuer Ordner 1/_assets/novax_logo_transparent.png",
+    "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\_assets\\novax_logo_transparent.png",
+    "https://raw.githubusercontent.com/y5gc8zpdwh-droid/novax-rivals-assets/main/novax_logo_transparent.png",
     "download.png",
     "NovaX_Logo.png",
     "C:/Users/User/OneDrive/Neuer Ordner 1/download.png",
@@ -94,9 +98,13 @@ UI.DefaultTheme = {
     "novax_logo_ring_transparent.png",
     "C:/Users/User/OneDrive/Neuer Ordner 1/novax_logo_ring_transparent.png",
     "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\novax_logo_ring_transparent.png",
+    "_assets/novax_logo_ring_transparent.png",
+    "C:/Users/User/OneDrive/Neuer Ordner 1/_assets/novax_logo_ring_transparent.png",
+    "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\_assets\\novax_logo_ring_transparent.png",
+    "https://raw.githubusercontent.com/y5gc8zpdwh-droid/novax-rivals-assets/main/novax_logo_ring_transparent.png",
   },
-  LogoRectOffset = nil,
-  LogoRectSize = nil,
+  LogoRectOffset = Vector2.new(285, 285),
+  LogoRectSize = Vector2.new(690, 690),
   Blur = {
     Enabled = true,
     Size = 4,
@@ -331,31 +339,83 @@ local function safeCallback(callback, ...)
   end
 end
 
+local function ensureAssetFolder(folder)
+  if typeof(makefolder) == "function" and typeof(isfolder) == "function" then
+    local okFolder, exists = pcall(isfolder, folder)
+    if okFolder and not exists then
+      pcall(makefolder, folder)
+    end
+  end
+end
+
+local function assetFromLocalFile(path)
+  if type(path) ~= "string" or path == "" then
+    return nil
+  end
+
+  if typeof(getcustomasset) == "function" then
+    local ok, asset = pcall(getcustomasset, path)
+    if ok and type(asset) == "string" and asset ~= "" then
+      return asset
+    end
+  end
+
+  if typeof(getsynasset) == "function" then
+    local ok, asset = pcall(getsynasset, path)
+    if ok and type(asset) == "string" and asset ~= "" then
+      return asset
+    end
+  end
+
+  return nil
+end
+
+local function resolveRemoteAsset(url)
+  if type(url) ~= "string" or url == "" then
+    return nil
+  end
+
+  local fileName = url:match("([^/%?]+%.[%w]+)") or "asset.png"
+  local cachePath = "NovaXAssets/" .. fileName
+  local cached = assetFromLocalFile(cachePath)
+  if cached then
+    return cached
+  end
+
+  if typeof(writefile) == "function" then
+    ensureAssetFolder("NovaXAssets")
+    local sep = string.find(url, "?", 1, true) and "&" or "?"
+    local okFetch, body = pcall(function()
+      return game:HttpGet(url .. sep .. "nx=" .. tostring(math.floor(os.clock() * 1000000)), true)
+    end)
+    if okFetch and type(body) == "string" and #body > 64 then
+      local okWrite = pcall(function()
+        writefile(cachePath, body)
+      end)
+      if okWrite then
+        return assetFromLocalFile(cachePath)
+      end
+    end
+  end
+
+  return url
+end
+
 local function resolveAssetSource(source)
   local function resolveOne(value)
     if type(value) ~= "string" or value == "" then
       return nil
     end
     
-    if value:match("^rbxasset") or value:match("^http") then
+    if value:match("^rbxasset") then
       return value
     end
-    
-    if typeof(getcustomasset) == "function" then
-      local ok, asset = pcall(getcustomasset, value)
-      if ok and type(asset) == "string" and asset ~= "" then
-        return asset
-      end
+
+    if value:match("^http") then
+      return resolveRemoteAsset(value)
     end
     
-    if typeof(getsynasset) == "function" then
-      local ok, asset = pcall(getsynasset, value)
-      if ok and type(asset) == "string" and asset ~= "" then
-        return asset
-      end
-    end
-    
-    return nil
+    return assetFromLocalFile(value)
   end
   
   if type(source) == "table" then
@@ -3834,7 +3894,7 @@ function UI:CreateWindow(opts)
     })
     local markScale = make("UIScale", {Scale = 0.88, Parent = mark})
     local splashRingLogo = nil
-    if logoRingSource then
+    if logoRingSource and not logoSource then
       splashRingLogo = make("ImageLabel", {
         BackgroundTransparency = 1,
         AnchorPoint = Vector2.new(0.5, 0.5),
@@ -3987,7 +4047,7 @@ function UI:CreateWindow(opts)
       corner(bar, 999)
       progressBars[i] = bar
     end
-    outerRing.Visible = splashRingLogo == nil
+    outerRing.Visible = splashLogo == nil and splashRingLogo == nil
     innerRing.Visible = splashLogo == nil and splashRingLogo == nil
     if splashLogo then
       codeLeft.Visible = false
@@ -9951,6 +10011,328 @@ setupESP = function()
     end
   end)
 end
+
+local legacyCleanAllESP = cleanAllESP
+local liteEspGui = nil
+local liteEspRecords = {}
+local liteEspLastFullClean = 0
+
+local function getLiteEspParent()
+  if typeof(gethui) == "function" then
+    local ok, hui = pcall(gethui)
+    if ok and hui then
+      return hui
+    end
+  end
+  local okCore, coreGui = pcall(function()
+    return game:GetService("CoreGui")
+  end)
+  if okCore and coreGui then
+    return coreGui
+  end
+  return LocalPlayer and LocalPlayer:FindFirstChildOfClass("PlayerGui") or nil
+end
+
+local function ensureLiteEspGui()
+  if liteEspGui and liteEspGui.Parent then
+    return liteEspGui
+  end
+  local parent = getLiteEspParent()
+  if not parent then
+    return nil
+  end
+  local gui = Instance.new("ScreenGui")
+  gui.Name = "NX_LITE_ESP"
+  gui.ResetOnSpawn = false
+  gui.IgnoreGuiInset = true
+  gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+  gui.DisplayOrder = 8
+  local ok = pcall(function()
+    gui.Parent = parent
+  end)
+  if not ok or not gui.Parent then
+    pcall(function() gui:Destroy() end)
+    return nil
+  end
+  liteEspGui = gui
+  return gui
+end
+
+local function destroyLiteRecord(player)
+  local rec = liteEspRecords[player]
+  if not rec then
+    return
+  end
+  if rec.Billboard then
+    pcall(function() rec.Billboard:Destroy() end)
+  end
+  if rec.Highlight then
+    pcall(function() rec.Highlight:Destroy() end)
+  end
+  liteEspRecords[player] = nil
+end
+
+local function cleanLiteESP()
+  for player in pairs(liteEspRecords) do
+    destroyLiteRecord(player)
+  end
+  if liteEspGui then
+    pcall(function() liteEspGui:Destroy() end)
+    liteEspGui = nil
+  end
+end
+
+cleanAllESP = function()
+  pcall(legacyCleanAllESP)
+  cleanLiteESP()
+end
+
+local function setLiteText(label, text, color, visible)
+  if not label then
+    return
+  end
+  label.Visible = visible == true
+  if visible == true then
+    local nextText = tostring(text or "")
+    if label.Text ~= nextText then
+      label.Text = nextText
+    end
+    if color and label.TextColor3 ~= color then
+      label.TextColor3 = color
+    end
+  end
+end
+
+local function ensureLiteRecord(player)
+  local gui = ensureLiteEspGui()
+  if not gui or not player or player == LocalPlayer then
+    return nil
+  end
+  local rec = liteEspRecords[player]
+  if rec and rec.Billboard and rec.Billboard.Parent and rec.Highlight and rec.Highlight.Parent then
+    return rec
+  end
+  destroyLiteRecord(player)
+
+  rec = {}
+  local billboard = Instance.new("BillboardGui")
+  billboard.Name = "NX_LITE_ESP_TAG"
+  billboard.AlwaysOnTop = true
+  billboard.LightInfluence = 0
+  billboard.Size = UDim2.new(0, 150, 0, 54)
+  billboard.StudsOffset = Vector3.new(0, 2.8, 0)
+  billboard.Enabled = false
+  billboard.Parent = gui
+
+  local frame = Instance.new("Frame")
+  frame.BackgroundTransparency = 1
+  frame.Size = UDim2.new(1, 0, 1, 0)
+  frame.Parent = billboard
+
+  local layout = Instance.new("UIListLayout")
+  layout.FillDirection = Enum.FillDirection.Vertical
+  layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+  layout.VerticalAlignment = Enum.VerticalAlignment.Center
+  layout.SortOrder = Enum.SortOrder.LayoutOrder
+  layout.Padding = UDim.new(0, 0)
+  layout.Parent = frame
+
+  local function label(name, size, order)
+    local item = Instance.new("TextLabel")
+    item.Name = name
+    item.BackgroundTransparency = 1
+    item.Size = UDim2.new(1, 0, 0, size + 3)
+    item.Font = Enum.Font.GothamBold
+    item.TextSize = size
+    item.TextStrokeTransparency = 0.28
+    item.TextStrokeColor3 = Color3.new(0, 0, 0)
+    item.TextColor3 = ESP_TEXT_COLOR
+    item.Text = ""
+    item.Visible = false
+    item.LayoutOrder = order
+    item.Parent = frame
+    return item
+  end
+
+  rec.Billboard = billboard
+  rec.NameLabel = label("Name", 12, 1)
+  rec.HealthLabel = label("Health", 11, 2)
+  rec.DistanceLabel = label("Distance", 10, 3)
+  rec.SkeletonLabel = label("Skeleton", 10, 4)
+
+  local hl = Instance.new("Highlight")
+  hl.Name = "NX_LITE_ESP_HL"
+  hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+  hl.Enabled = false
+  hl.FillTransparency = 1
+  hl.OutlineTransparency = 0
+  hl.OutlineColor = ESP_OUTLINE_COLOR
+  hl.Parent = gui
+  rec.Highlight = hl
+
+  liteEspRecords[player] = rec
+  return rec
+end
+
+local function hideLiteRecord(player)
+  local rec = liteEspRecords[player]
+  if not rec then
+    return
+  end
+  if rec.Billboard then
+    rec.Billboard.Enabled = false
+  end
+  if rec.Highlight then
+    rec.Highlight.Enabled = false
+  end
+end
+
+local function updateLiteESPPlayer(player, snap)
+  if not player or player == LocalPlayer then
+    return false
+  end
+  local char, root, hum, head = getESPCharacterData(player)
+  if not char or not root or not hum or hum.Health <= 0 then
+    hideLiteRecord(player)
+    return false
+  end
+  local enemy = isEnemy(player, true)
+  if not ((enemy and snap.showEnemy) or ((not enemy) and snap.showTeam)) then
+    hideLiteRecord(player)
+    return false
+  end
+  local delta = snap.cameraPos - root.Position
+  local distSq = delta:Dot(delta)
+  if snap.maxDist > 0 and distSq > snap.maxDistSq then
+    hideLiteRecord(player)
+    return false
+  end
+
+  local rec = ensureLiteRecord(player)
+  if not rec then
+    return false
+  end
+  local color = enemy and ESP_ENEMY_COLOR or ESP_TEAM_COLOR
+  local wantsLabels = snap.showName or snap.showHealth or snap.showDistance or snap.showSkeleton
+  local targetAdornee = (head and head.Parent and head) or root
+  if rec.Billboard.Adornee ~= targetAdornee then
+    rec.Billboard.Adornee = targetAdornee
+  end
+  rec.Billboard.Enabled = wantsLabels
+
+  if rec.Highlight.Adornee ~= char then
+    rec.Highlight.Adornee = char
+  end
+  rec.Highlight.OutlineColor = color
+  rec.Highlight.FillColor = color
+  rec.Highlight.FillTransparency = snap.showHighlight and 0.76 or 1
+  rec.Highlight.OutlineTransparency = (snap.showBox or snap.showHighlight) and 0 or 1
+  rec.Highlight.Enabled = snap.showBox or snap.showHighlight
+
+  setLiteText(rec.NameLabel, tostring(player.DisplayName or player.Name), color, snap.showName)
+  if snap.showHealth then
+    local ratio = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
+    local hpColor = getHealthColor(ratio)
+    setLiteText(rec.HealthLabel, tostring(math.floor(hum.Health + 0.5)) .. " HP", hpColor, true)
+  else
+    setLiteText(rec.HealthLabel, "", nil, false)
+  end
+  if snap.showDistance then
+    setLiteText(rec.DistanceLabel, tostring(math.floor(math.sqrt(distSq) + 0.5)) .. "m", ESP_TEXT_COLOR, true)
+  else
+    setLiteText(rec.DistanceLabel, "", nil, false)
+  end
+  setLiteText(rec.SkeletonLabel, snap.showSkeleton and "+" or "", color, snap.showSkeleton)
+  return true
+end
+
+setupESP = function()
+  task.spawn(function()
+    pcall(legacyCleanAllESP)
+    local wasEnabled = false
+    while RUNNING do
+      if not Camera then
+        task.wait(0.25)
+      elseif STATE.ESPEnabled ~= true then
+        if wasEnabled then
+          cleanLiteESP()
+          wasEnabled = false
+        end
+        task.wait(0.18)
+      else
+        wasEnabled = true
+        local now = tick()
+        local snap = {
+          cameraPos = Camera.CFrame.Position,
+          maxDist = math.max(0, safeNum(STATE.ESPMaxDistance)),
+          showEnemy = STATE.ESPEnemy == true,
+          showTeam = STATE.ESPTeam == true,
+          showHighlight = STATE.ESPHighlight == true,
+          showName = STATE.ESPName == true,
+          showHealth = STATE.ESPHealth == true,
+          showDistance = STATE.ESPDistance == true,
+          showBox = STATE.ESPBox == true,
+          showSkeleton = STATE.ESPSkeleton == true and isRoundStarted(),
+        }
+        snap.maxDistSq = snap.maxDist * snap.maxDist
+
+        if not snap.showEnemy and not snap.showTeam then
+          cleanLiteESP()
+          task.wait(0.25)
+          continue
+        end
+
+        if now - liteEspLastFullClean > 6 then
+          liteEspLastFullClean = now
+          for player in pairs(liteEspRecords) do
+            if not player.Parent then
+              destroyLiteRecord(player)
+            end
+          end
+        end
+
+        updateCache()
+        local visibleSet = {}
+        local candidates = {}
+        for _, player in ipairs(cachedPlayers) do
+          if player and player ~= LocalPlayer then
+            local _, root, hum = getESPCharacterData(player)
+            if root and hum and hum.Health > 0 then
+              local enemy = isEnemy(player, true)
+              if (enemy and snap.showEnemy) or ((not enemy) and snap.showTeam) then
+                local delta = snap.cameraPos - root.Position
+                local distSq = delta:Dot(delta)
+                if snap.maxDist <= 0 or distSq <= snap.maxDistSq then
+                  candidates[#candidates + 1] = {Player = player, DistSq = distSq}
+                end
+              end
+            end
+          end
+        end
+        table.sort(candidates, function(a, b)
+          return (a.DistSq or huge) < (b.DistSq or huge)
+        end)
+
+        local maxVisible = snap.showSkeleton and 14 or 26
+        for index = 1, math.min(#candidates, maxVisible) do
+          local player = candidates[index].Player
+          if updateLiteESPPlayer(player, snap) then
+            visibleSet[player] = true
+          end
+        end
+        for player in pairs(liteEspRecords) do
+          if not visibleSet[player] then
+            hideLiteRecord(player)
+          end
+        end
+
+        local fps = math.clamp(safeNum(STATE.ESPUpdateFPS), 4, 12)
+        task.wait(math.max(1 / fps, snap.showSkeleton and 0.14 or 0.085))
+      end
+    end
+    cleanLiteESP()
+  end)
+end
 end
 local speedBV, flyBV, flyBG, flyActive = nil,nil,nil,false
 local noClipOriginal = {}
@@ -10571,11 +10953,19 @@ local function NX_BootGUI()
           "novax_logo_ring_transparent.png",
           "C:/Users/User/OneDrive/Neuer Ordner 1/novax_logo_ring_transparent.png",
           "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\novax_logo_ring_transparent.png",
+          "_assets/novax_logo_ring_transparent.png",
+          "C:/Users/User/OneDrive/Neuer Ordner 1/_assets/novax_logo_ring_transparent.png",
+          "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\_assets\\novax_logo_ring_transparent.png",
+          "https://raw.githubusercontent.com/y5gc8zpdwh-droid/novax-rivals-assets/main/novax_logo_ring_transparent.png",
         },
         LogoImage = {
           "novax_logo_transparent.png",
           "C:/Users/User/OneDrive/Neuer Ordner 1/novax_logo_transparent.png",
           "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\novax_logo_transparent.png",
+          "_assets/novax_logo_transparent.png",
+          "C:/Users/User/OneDrive/Neuer Ordner 1/_assets/novax_logo_transparent.png",
+          "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\_assets\\novax_logo_transparent.png",
+          "https://raw.githubusercontent.com/y5gc8zpdwh-droid/novax-rivals-assets/main/novax_logo_transparent.png",
           "download.png",
           "C:/Users/User/OneDrive/Neuer Ordner 1/download.png",
           "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\download.png",
