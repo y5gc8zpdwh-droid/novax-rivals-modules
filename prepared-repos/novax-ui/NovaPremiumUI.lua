@@ -43,12 +43,14 @@ UI.DefaultTheme = {
     "C:\\Users\\User\\OneDrive\\Neuer Ordner 1\\_assets\\novax_logo_ring_transparent.png",
     "https://raw.githubusercontent.com/y5gc8zpdwh-droid/novax-rivals-assets/main/novax_logo_ring_transparent.png",
   },
-  LogoRectOffset = Vector2.new(270, 260),
-  LogoRectSize = Vector2.new(730, 730),
+  LogoRectOffset = Vector2.new(220, 213),
+  LogoRectSize = Vector2.new(820, 820),
   LogoScale = 1,
-  SplashLogoRectOffset = Vector2.new(270, 260),
-  SplashLogoRectSize = Vector2.new(730, 730),
-  SplashLogoScale = 0.72,
+  LogoRingRectOffset = Vector2.new(195, 204),
+  LogoRingRectSize = Vector2.new(820, 820),
+  SplashLogoRectOffset = Vector2.new(220, 213),
+  SplashLogoRectSize = Vector2.new(820, 820),
+  SplashLogoScale = 0.94,
   Blur = {
     Enabled = false,
     Size = 0,
@@ -303,7 +305,7 @@ local function resolveRemoteAsset(url)
   end
 
   local fileName = url:match("([^/%?]+%.[%w]+)") or "asset.png"
-  local cachePath = "NovaXAssets/" .. fileName
+  local cachePath = "NovaXAssets/v4_" .. fileName
   local cached = assetFromLocalFile(cachePath)
   if cached then
     return cached
@@ -325,7 +327,7 @@ local function resolveRemoteAsset(url)
     end
   end
 
-  return url
+  return nil
 end
 
 local function resolveAssetSource(source)
@@ -369,12 +371,18 @@ end
 
 local function createNovaMark(parent, theme, size, imageSource, rectOffset, rectSize, imageScale)
   local hasImage = imageSource ~= nil
+  local parentZ = 1
+  pcall(function()
+    parentZ = tonumber(parent.ZIndex) or 1
+  end)
+  local badgeZ = parentZ + 1
   local badge = make("Frame", {
     Size = UDim2.new(0, size, 0, size),
     BackgroundColor3 = theme.Colors.Input,
     BorderSizePixel = 0,
     BackgroundTransparency = 0,
     ClipsDescendants = true,
+    ZIndex = badgeZ,
     Parent = parent,
   })
   make("UIAspectRatioConstraint", { AspectRatio = 1, Parent = badge })
@@ -396,6 +404,7 @@ local function createNovaMark(parent, theme, size, imageSource, rectOffset, rect
       Image = imageSource,
       ImageTransparency = 0,
       ScaleType = Enum.ScaleType.Fit,
+      ZIndex = badgeZ + 1,
       Parent = badge,
     })
     make("UIAspectRatioConstraint", { AspectRatio = 1, Parent = img })
@@ -405,56 +414,34 @@ local function createNovaMark(parent, theme, size, imageSource, rectOffset, rect
       BackgroundTransparency = 1,
       Size = UDim2.new(1, -10, 1, -10),
       Position = UDim2.new(0, 5, 0, 5),
+      ZIndex = badgeZ + 1,
       Parent = badge,
     })
-    local leftLoop = make("Frame", {
-      BackgroundTransparency = 1,
-      Size = UDim2.new(0.58, 0, 0.42, 0),
-      Position = UDim2.new(0.03, 0, 0.29, 0),
-      Rotation = -18,
-      Parent = mark,
-    })
-    corner(leftLoop, 999)
-    stroke(leftLoop, theme.Colors.Accent2 or theme.Colors.Accent, math.max(2, math.floor(size * 0.05)), 0.04)
-    local rightLoop = make("Frame", {
-      BackgroundTransparency = 1,
-      Size = UDim2.new(0.58, 0, 0.42, 0),
-      Position = UDim2.new(0.39, 0, 0.29, 0),
-      Rotation = 18,
-      Parent = mark,
-    })
-    corner(rightLoop, 999)
-    stroke(rightLoop, theme.Colors.Accent, math.max(2, math.floor(size * 0.05)), 0.02)
     make("TextLabel", {
       BackgroundTransparency = 1,
-      Size = UDim2.new(0.58, 0, 0.48, 0),
-      Position = UDim2.new(0.2, 0, 0.27, 0),
-      Font = Enum.Font.GothamBold,
-      TextSize = math.max(10, math.floor(size * 0.25)),
-      Text = "</>",
-      TextColor3 = theme.Colors.Accent2 or theme.Colors.Accent,
-      Parent = mark,
-    })
-    local diamond = make("Frame", {
       AnchorPoint = Vector2.new(0.5, 0.5),
-      Size = UDim2.new(0, math.max(8, math.floor(size * 0.22)), 0, math.max(8, math.floor(size * 0.22))),
-      Position = UDim2.new(0.72, 0, 0.72, 0),
-      Rotation = 15,
-      BackgroundColor3 = theme.Colors.Accent2 or theme.Colors.Accent,
-      BackgroundTransparency = 0.04,
-      BorderSizePixel = 0,
-      Parent = mark,
-    })
-    corner(diamond, math.max(2, math.floor(size * 0.05)))
-    local hole = make("Frame", {
-      AnchorPoint = Vector2.new(0.5, 0.5),
-      Size = UDim2.new(0.36, 0, 0.36, 0),
+      Size = UDim2.new(1, -4, 1, -4),
       Position = UDim2.new(0.5, 0, 0.5, 0),
-      BackgroundColor3 = theme.Colors.Input,
-      BorderSizePixel = 0,
-      Parent = diamond,
+      Font = Enum.Font.GothamBlack,
+      TextSize = math.max(13, math.floor(size * 0.34)),
+      Text = "NX",
+      TextColor3 = theme.Colors.Accent2 or theme.Colors.Accent,
+      TextXAlignment = Enum.TextXAlignment.Center,
+      TextYAlignment = Enum.TextYAlignment.Center,
+      ZIndex = badgeZ + 2,
+      Parent = mark,
     })
-    corner(hole, math.max(1, math.floor(size * 0.03)))
+    local accentLine = make("Frame", {
+      AnchorPoint = Vector2.new(0.5, 1),
+      Size = UDim2.new(0.48, 0, 0, math.max(2, math.floor(size * 0.045))),
+      Position = UDim2.new(0.5, 0, 0.82, 0),
+      BackgroundColor3 = theme.Colors.Accent3 or theme.Colors.Accent,
+      BackgroundTransparency = 0.12,
+      BorderSizePixel = 0,
+      ZIndex = badgeZ + 2,
+      Parent = mark,
+    })
+    corner(accentLine, 999)
   end
 
   return badge
@@ -815,10 +802,12 @@ function UI:CreateWindow(opts)
   local logoRingSource = resolveAssetSource(opts.LogoRingImage or theme.LogoRingImage)
   local logoRectOffset = opts.LogoRectOffset or theme.LogoRectOffset
   local logoRectSize = opts.LogoRectSize or theme.LogoRectSize
+  local logoRingRectOffset = opts.LogoRingRectOffset or theme.LogoRingRectOffset or logoRectOffset
+  local logoRingRectSize = opts.LogoRingRectSize or theme.LogoRingRectSize or logoRectSize
   local logoScale = tonumber(opts.LogoScale or theme.LogoScale) or 1
   local splashLogoRectOffset = opts.SplashLogoRectOffset or theme.SplashLogoRectOffset or logoRectOffset
   local splashLogoRectSize = opts.SplashLogoRectSize or theme.SplashLogoRectSize or logoRectSize
-  local splashLogoScale = tonumber(opts.SplashLogoScale or theme.SplashLogoScale) or 0.72
+  local splashLogoScale = tonumber(opts.SplashLogoScale or theme.SplashLogoScale) or 0.94
 
   local window = setmetatable({ _theme = theme, _tabs = {}, _activeTab = nil }, UI)
   window._connections = {}
@@ -932,7 +921,9 @@ function UI:CreateWindow(opts)
   })
 
   local headerLogoSource = logoSource or logoRingSource
-  local logoBadge = createNovaMark(top, theme, 46, headerLogoSource, logoRectOffset, logoRectSize, logoScale)
+  local headerLogoRectOffset = logoSource and logoRectOffset or logoRingRectOffset
+  local headerLogoRectSize = logoSource and logoRectSize or logoRingRectSize
+  local logoBadge = createNovaMark(top, theme, 46, headerLogoSource, headerLogoRectOffset, headerLogoRectSize, logoScale)
   logoBadge.Position = UDim2.new(0, 16, 0, 12)
 
   make("TextLabel", {
@@ -4159,7 +4150,7 @@ function UI:CreateWindow(opts)
           Parent = mark,
         })
         make("UIAspectRatioConstraint", { AspectRatio = 1, Parent = splashRingLogo })
-        applyImageRect(splashRingLogo, splashLogoRectOffset, splashLogoRectSize)
+        applyImageRect(splashRingLogo, logoRingRectOffset, logoRingRectSize)
       end
       local splashLogo = nil
       if logoSource then
@@ -4312,6 +4303,13 @@ function UI:CreateWindow(opts)
       codeRight.Visible = false
       robloxSymbol.Visible = false
       robloxHole.Visible = false
+      local fallbackLogo = nil
+      if not splashLogo and not splashRingLogo then
+        fallbackLogo = createNovaMark(mark, theme, 132, nil, nil, nil, 1)
+        fallbackLogo.AnchorPoint = Vector2.new(0.5, 0.5)
+        fallbackLogo.Position = UDim2.new(0.5, 0, 0.5, 0)
+        fallbackLogo.ZIndex = 10004
+      end
 
       tween(splash, theme.Anim.Splash * 0.18, { BackgroundTransparency = 0.08 })
       tween(sgrad, theme.Anim.Splash * 1.05, { Rotation = 38 }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
@@ -4332,7 +4330,7 @@ function UI:CreateWindow(opts)
           Rotation = 0,
         }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
       end
-      if not splashLogo and not splashRingLogo then
+      if not fallbackLogo and not splashLogo and not splashRingLogo then
         outerRing.Visible = true
         innerRing.Visible = true
         tween(outerRing, theme.Anim.Splash * 0.78, { Size = UDim2.new(0, 132, 0, 132), Rotation = 4 }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
@@ -4349,7 +4347,7 @@ function UI:CreateWindow(opts)
       end
       tween(subText, theme.Anim.Splash * 0.28, { TextTransparency = 0 }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
       task.wait(theme.Anim.Splash * 0.4)
-      if not splashLogo and not splashRingLogo then
+      if not fallbackLogo and not splashLogo and not splashRingLogo then
         tween(
           codeLeft,
           theme.Anim.Splash * 0.3,
@@ -4380,7 +4378,7 @@ function UI:CreateWindow(opts)
       tween(splash, theme.Anim.Splash * 0.45, { BackgroundTransparency = 1 })
       tween(stext, theme.Anim.Splash * 0.45, { TextTransparency = 1 })
       tween(subText, theme.Anim.Splash * 0.45, { TextTransparency = 1 })
-      if not splashLogo and not splashRingLogo then
+      if not fallbackLogo and not splashLogo and not splashRingLogo then
         tween(outerStroke, theme.Anim.Splash * 0.35, { Transparency = 1 })
         tween(innerStroke, theme.Anim.Splash * 0.35, { Transparency = 1 })
       end
